@@ -1,0 +1,101 @@
+# Scoring Criteria Configuration
+# This file defines the evaluation dimensions, criteria, weights, and rubrics
+
+categories:
+  - name: "Market Opportunity"
+    weight: 0.25
+    criteria:
+      - name: "Market Size"
+        weight: 0.4
+        description: "Total addressable market (TAM) assessment"
+      - name: "Market Growth"
+        weight: 0.3
+        description: "Expected market growth rate"
+      - name: "Competitive Landscape"
+        weight: 0.3
+        description: "Competition intensity and differentiation potential"
+  
+  - name: "Product & Technology"
+    weight: 0.25
+    criteria:
+      - name: "Innovation Level"
+        weight: 0.35
+        description: "Technology innovation and uniqueness"
+      - name: "Feasibility"
+        weight: 0.35
+        description: "Technical feasibility and development capability"
+      - name: "Scalability"
+        weight: 0.30
+        description: "Ability to scale the solution"
+  
+  - name: "Business Model"
+    weight: 0.20
+    criteria:
+      - name: "Revenue Model"
+        weight: 0.4
+        description: "Clarity and viability of revenue streams"
+      - name: "Unit Economics"
+        weight: 0.3
+        description: "Unit economics and profitability potential"
+      - name: "Go-to-Market Strategy"
+        weight: 0.3
+        description: "Marketing and distribution strategy"
+  
+  - name: "Team & Execution"
+    weight: 0.15
+    criteria:
+      - name: "Team Experience"
+        weight: 0.4
+        description: "Relevant experience and expertise"
+      - name: "Execution Capability"
+        weight: 0.35
+        description: "Ability to execute on the plan"
+      - name: "Stage Appropriateness"
+        weight: 0.25
+        description: "Team size and capability match current stage"
+  
+  - name: "Risk Assessment"
+    weight: 0.15
+    criteria:
+      - name: "Regulatory/Compliance Risk"
+        weight: 0.25
+        description: "Regulatory and compliance considerations"
+      - name: "Privacy/Security Risk"
+        weight: 0.25
+        description: "Data privacy and security concerns"
+      - name: "Market Risk"
+        weight: 0.25
+        description: "Market adoption and timing risks"
+      - name: "Technical Risk"
+        weight: 0.25
+        description: "Technical implementation and execution risks"
+
+rubrics:
+  score_levels:
+    - level: 5
+      label: "Excellent"
+      description: "Exceeds expectations, strong competitive advantage"
+    - level: 4
+      label: "Good"
+      description: "Meets expectations, solid fundamentals"
+    - level: 3
+      label: "Average"
+      description: "Meets basic requirements, some concerns"
+    - level: 2
+      label: "Below Average"
+      description: "Does not fully meet requirements, significant concerns"
+    - level: 1
+      label: "Poor"
+      description: "Fails to meet requirements, major issues"
+
+decision_mapping:
+  fund:
+    min_score: 4.0
+    description: "Recommend funding - strong potential"
+  partial:
+    min_score: 3.0
+    max_score: 3.9
+    description: "Recommend partial funding - moderate potential with conditions"
+  decline:
+    max_score: 2.9
+    description: "Recommend decline - insufficient potential or high risk"
