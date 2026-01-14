@@ -7,7 +7,10 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.example.service.CriteriaLoader
+import org.example.service.QuestionGenerator
 import java.io.File
 
 enum class StartupStage {
@@ -15,6 +18,9 @@ enum class StartupStage {
     MVP,
     EARLY_REVENUE
 }
+
+// Available industry categories
+val IndustryCategories = listOf("Tech", "Energy", "More to come")
 
 data class FileEntry(
     val id: Int,
@@ -25,7 +31,8 @@ data class FileEntry(
 @Composable
 fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) -> Unit = {}) {
     var startupName by remember { mutableStateOf("") }
-    var industry by remember { mutableStateOf("") }
+    var selectedIndustry by remember { mutableStateOf<String?>(null) }
+    var industryExpanded by remember { mutableStateOf(false) }
     var problemStatement by remember { mutableStateOf("") }
     var proposedSolution by remember { mutableStateOf("") }
     var selectedStage by remember { mutableStateOf<StartupStage?>(null) }
@@ -36,7 +43,25 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
     var validationErrorMessage by remember { mutableStateOf("") }
     var showConfirmDialog by remember { mutableStateOf(false) }
     
+    // Criteria-based questions
+    var criteriaQuestions by remember { mutableStateOf<List<org.example.service.Question>>(emptyList()) }
+    var criteriaAnswers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var expandedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
+    
     val scrollState = rememberScrollState()
+    
+    // Load criteria and generate questions when industry is selected
+    LaunchedEffect(selectedIndustry) {
+        if (selectedIndustry != null && selectedIndustry != "More to come") {
+            val criteriaConfig = CriteriaLoader.loadFromResources(selectedIndustry)
+            criteriaQuestions = QuestionGenerator.generateQuestionsFromCriteria(criteriaConfig)
+            // Initialize empty answers for all questions
+            criteriaAnswers = criteriaQuestions.associate { it.id to "" }
+        } else {
+            criteriaQuestions = emptyList()
+            criteriaAnswers = emptyMap()
+        }
+    }
     
     fun validateForm(): Boolean {
         val errors = mutableListOf<String>()
@@ -44,7 +69,7 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
         if (startupName.isBlank()) {
             errors.add("Startup name")
         }
-        if (industry.isBlank()) {
+        if (selectedIndustry == null) {
             errors.add("Industry")
         }
         if (problemStatement.isBlank()) {
@@ -66,6 +91,16 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
             }
         }
         
+        // Validate criteria questions (optional but recommended)
+        val unansweredRequired = criteriaQuestions.filter { 
+            criteriaAnswers[it.id].isNullOrBlank() 
+        }
+        if (unansweredRequired.isNotEmpty()) {
+            // Warn but don't block - questions are recommended but not strictly required
+            // You can make them required by uncommenting the error addition below
+            // errors.add("Please answer all evaluation questions")
+        }
+        
         if (errors.isNotEmpty()) {
             validationErrorMessage = "Please fill in the following fields:\n" + errors.joinToString("\n")
             showValidationError = true
@@ -84,11 +119,12 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
         if (selectedStage != null) {
             val submissionData = StartupSubmissionData(
                 startupName = startupName,
-                industry = industry,
+                industry = selectedIndustry ?: "",
                 problemStatement = problemStatement,
                 proposedSolution = proposedSolution,
                 stage = selectedStage!!,
-                files = fileEntries.filter { it.file != null }
+                files = fileEntries.filter { it.file != null },
+                criteriaAnswers = criteriaAnswers
             )
             onSubmit(submissionData)
             showConfirmDialog = false
@@ -106,10 +142,19 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Startup Submission",
-                style = MaterialTheme.typography.h4
-            )
+            Column {
+                Text(
+                    text = "Startup Submission",
+                    style = MaterialTheme.typography.h4,
+                    color = MaterialTheme.colors.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "BMO Evaluation Form",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
             Button(onClick = onBack) {
                 Text("Back")
             }
@@ -133,14 +178,53 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
                 singleLine = true
             )
             
-            // Industry
-            OutlinedTextField(
-                value = industry,
-                onValueChange = { industry = it },
-                label = { Text("Industry") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            // Industry dropdown
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Industry",
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Box {
+                    OutlinedButton(
+                        onClick = { industryExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = selectedIndustry ?: "Select industry"
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = industryExpanded,
+                        onDismissRequest = { industryExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IndustryCategories.forEach { category ->
+                            val isSelectable = category != "More to come"
+                            DropdownMenuItem(
+                                onClick = {
+                                    if (isSelectable) {
+                                        selectedIndustry = category
+                                        industryExpanded = false
+                                    }
+                                },
+                                enabled = isSelectable
+                            ) {
+                                Text(
+                                    text = category,
+                                    style = if (isSelectable) {
+                                        MaterialTheme.typography.body1
+                                    } else {
+                                        MaterialTheme.typography.body2.copy(
+                                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             
             // Problem statement
             OutlinedTextField(
@@ -196,6 +280,109 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
                             }
                         }
                     }
+                }
+            }
+            
+            // Criteria-based questions section
+            if (criteriaQuestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Evaluation Questions",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${criteriaQuestions.size} questions",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Please answer these questions to help us evaluate your startup. These questions are based on our evaluation criteria and will help provide a more accurate analysis.",
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                // Group questions by category
+                val questionsByCategory = criteriaQuestions.groupBy { it.category }
+                
+                questionsByCategory.forEach { (category, questions) ->
+                    var isCategoryExpanded by remember { mutableStateOf(true) }
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = 2.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = category,
+                                    style = MaterialTheme.typography.subtitle1,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                TextButton(onClick = { isCategoryExpanded = !isCategoryExpanded }) {
+                                    Text(if (isCategoryExpanded) "▼" else "▶")
+                                }
+                            }
+                            
+                            if (isCategoryExpanded) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                questions.forEach { question ->
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Divider()
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = question.questionText,
+                                            style = MaterialTheme.typography.body1,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        
+                                        Text(
+                                            text = "Criterion: ${question.criterion}",
+                                            style = MaterialTheme.typography.caption,
+                                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                        )
+                                        
+                                        OutlinedTextField(
+                                            value = criteriaAnswers[question.id] ?: "",
+                                            onValueChange = { answer ->
+                                                criteriaAnswers = criteriaAnswers + (question.id to answer)
+                                            },
+                                            label = { Text("Your answer") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            minLines = 3,
+                                            maxLines = 8
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
             

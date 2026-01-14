@@ -4,6 +4,8 @@ import org.example.StartupSubmissionData
 import org.example.model.SubmissionReview
 import org.example.model.ReviewStatus
 import org.example.model.ReviewNote
+import org.example.model.AnalysisResult
+import java.util.UUID
 
 /**
  * Interface for database service
@@ -23,6 +25,19 @@ interface DatabaseService {
      * @return Result indicating success or failure
      */
     fun submitToDatabaseSync(data: StartupSubmissionData): DatabaseResult
+    
+    /**
+     * Saves analysis result with submission data to local storage
+     * @param data The startup submission data
+     * @param analysisResult The analysis result
+     * @return Result indicating success or failure
+     */
+    suspend fun saveAnalysis(data: StartupSubmissionData, analysisResult: AnalysisResult): DatabaseResult
+    
+    /**
+     * Synchronous version for saving analysis
+     */
+    fun saveAnalysisSync(data: StartupSubmissionData, analysisResult: AnalysisResult): DatabaseResult
     
     /**
      * Fetches all submission reviews from the database
@@ -92,6 +107,42 @@ class DefaultDatabaseService : DatabaseService {
             return DatabaseResult.Success("Submission sent to BMO successfully")
         } catch (e: Exception) {
             return DatabaseResult.Error("Failed to submit to database: ${e.message}", e)
+        }
+    }
+    
+    override suspend fun saveAnalysis(data: StartupSubmissionData, analysisResult: AnalysisResult): DatabaseResult {
+        return saveAnalysisSync(data, analysisResult)
+    }
+    
+    override fun saveAnalysisSync(data: StartupSubmissionData, analysisResult: AnalysisResult): DatabaseResult {
+        try {
+            // Check if submission already exists (by startup name as identifier)
+            val existingIndex = submissions.indexOfFirst { 
+                it.submissionData.startupName == data.startupName 
+            }
+            
+            val now = java.util.Date()
+            val submissionReview = org.example.model.SubmissionReview(
+                id = if (existingIndex >= 0) submissions[existingIndex].id else java.util.UUID.randomUUID().toString(),
+                submissionData = data,
+                analysisResult = analysisResult,
+                status = if (existingIndex >= 0) submissions[existingIndex].status else ReviewStatus.PENDING,
+                notes = if (existingIndex >= 0) submissions[existingIndex].notes else emptyList(),
+                createdAt = if (existingIndex >= 0) submissions[existingIndex].createdAt else now,
+                updatedAt = now
+            )
+            
+            if (existingIndex >= 0) {
+                // Update existing submission
+                submissions[existingIndex] = submissionReview
+            } else {
+                // Add new submission
+                submissions.add(submissionReview)
+            }
+            
+            return DatabaseResult.Success("Analysis saved successfully")
+        } catch (e: Exception) {
+            return DatabaseResult.Error("Failed to save analysis: ${e.message}", e)
         }
     }
     

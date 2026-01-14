@@ -11,21 +11,26 @@ Analyze the provided startup submission according to the evaluation criteria and
 4. Risk assessment across key dimensions
 5. Final recommendation (Fund/Partial/Decline)
 
+**IMPORTANT**: If founder responses to evaluation questions are provided, use them as primary sources of information for scoring the relevant criteria. These responses directly address the evaluation criteria and should be heavily weighted in your analysis.
+
 ## Instructions
 
 ### 1. Scoring Process
 - Evaluate each category and its criteria according to the provided scoring rubric
 - Apply the specified weights when calculating category scores
 - Score each criterion on a scale of 1-5 based on the rubric levels
-- Calculate weighted category scores
+- **IMPORTANT: If insufficient information is provided to evaluate a criterion, set the score to 0 and set "insufficient_data" to true**
+- **When score is 0 due to insufficient data, provide "data_required" field indicating what files/information is needed (e.g., "Financial statements", "Market research data", "Patent documentation", "Customer validation data")**
+- Calculate weighted category scores (criteria with score 0 due to insufficient data should still be included but noted)
 - Calculate overall weighted average score
 
 ### 2. Transparency Requirements
 For each category, you MUST:
 - Identify which specific factors from the submission influenced the score
-- Reference the specific data points or information used
+- Reference the specific data points or information used (especially founder responses to evaluation questions if provided)
 - Explain how the weightings affected the final category score
 - Highlight any gaps in information that affected your ability to score accurately
+- **When founder responses are available, explicitly reference them in your reasoning for the relevant criteria**
 
 ### 3. Risk Assessment
 Explicitly assess and document:
@@ -49,9 +54,11 @@ You MUST output your analysis in the following JSON structure:
         {
           "criterion_name": "<string>",
           "criterion_weight": <float>,
-          "score": <integer 1-5>,
+          "score": <integer 0-5> (use 0 if insufficient information),
           "reasoning": "<string explanation>",
-          "supporting_evidence": ["<evidence point 1>", "<evidence point 2>"]
+          "supporting_evidence": ["<evidence point 1>", "<evidence point 2>"],
+          "insufficient_data": <boolean> (true if score is 0 due to missing information),
+          "data_required": "<string>" (describe what files/information is needed, e.g., "Financial statements", "Patent documentation", "Customer validation data" - only include if insufficient_data is true)
         }
       ],
       "category_reasoning": "<string explanation for category score>"
@@ -99,6 +106,8 @@ You MUST output your analysis in the following JSON structure:
 ## Important Notes
 - Be objective and evidence-based
 - Acknowledge information gaps and their impact
+- **If you cannot evaluate a criterion due to missing information (e.g., no financial data, no patent documents, no customer validation data), set score to 0, set insufficient_data to true, and specify what data_required in the data_required field**
+- **Common missing data types: Financial statements, Market research, Patent documentation, Customer validation data, Team resumes, Regulatory compliance documents**
 - Provide actionable insights for reviewers
 - Maintain transparency in all scoring decisions
 - Focus on structured, reproducible analysis

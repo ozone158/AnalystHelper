@@ -15,16 +15,16 @@ import org.example.model.ReviewStatus
 import org.example.service.DatabaseService
 
 @Composable
-fun SubmissionReviewListView(
+fun FounderAnalysisListView(
     databaseService: DatabaseService,
     onBack: () -> Unit,
-    onSelectSubmission: (SubmissionReview) -> Unit
+    onSelectAnalysis: (SubmissionReview) -> Unit
 ) {
-    var submissions by remember { mutableStateOf<List<SubmissionReview>>(emptyList()) }
+    var analyses by remember { mutableStateOf<List<SubmissionReview>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(Unit) {
-        submissions = databaseService.fetchSubmissionsSync()
+        analyses = databaseService.fetchSubmissionsSync()
         isLoading = false
     }
     
@@ -41,13 +41,13 @@ fun SubmissionReviewListView(
         ) {
             Column {
                 Text(
-                    text = "Submission Reviews",
+                    text = "My Analyses",
                     style = MaterialTheme.typography.h4,
                     color = MaterialTheme.colors.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Bank Officer Portal",
+                    text = "BMO Startup Evaluations",
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
@@ -59,7 +59,7 @@ fun SubmissionReviewListView(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Submissions list
+        // Analyses list
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -67,26 +67,36 @@ fun SubmissionReviewListView(
             ) {
                 CircularProgressIndicator()
             }
-        } else if (submissions.isEmpty()) {
+        } else if (analyses.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No submissions available",
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "No analyses available yet",
+                        style = MaterialTheme.typography.body1,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = "Submit your startup idea to get an analysis",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                    )
+                }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(submissions) { submission ->
-                    SubmissionReviewItem(
-                        submission = submission,
-                        onClick = { onSelectSubmission(submission) }
+                items(analyses) { analysis ->
+                    FounderAnalysisItem(
+                        analysis = analysis,
+                        onClick = { onSelectAnalysis(analysis) }
                     )
                 }
             }
@@ -95,8 +105,8 @@ fun SubmissionReviewListView(
 }
 
 @Composable
-fun SubmissionReviewItem(
-    submission: SubmissionReview,
+fun FounderAnalysisItem(
+    analysis: SubmissionReview,
     onClick: () -> Unit
 ) {
     Card(
@@ -116,66 +126,34 @@ fun SubmissionReviewItem(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = submission.submissionData.startupName,
+                    text = analysis.submissionData.startupName,
                     style = MaterialTheme.typography.h6,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Industry: ${submission.submissionData.industry}",
+                    text = "Industry: ${analysis.submissionData.industry}",
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
-                    text = "Stage: ${submission.submissionData.stage.name.lowercase().replace("_", " ").replaceFirstChar { it.uppercase() }}",
+                    text = "Stage: ${analysis.submissionData.stage.name.lowercase().replace("_", " ").replaceFirstChar { it.uppercase() }}",
                     style = MaterialTheme.typography.body2
+                )
+                Text(
+                    text = "Score: ${String.format("%.1f", analysis.analysisResult.overallScore)}/5",
+                    style = MaterialTheme.typography.body2,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colors.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    text = "Recommendation: ${analysis.analysisResult.recommendation.name}",
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
             
-            StatusChip(status = submission.status)
+            StatusChip(status = analysis.status)
         }
-    }
-}
-
-@Composable
-fun StatusChip(status: ReviewStatus) {
-    val (backgroundColor, textColor, text) = when (status) {
-        ReviewStatus.PENDING -> Triple(
-            org.example.theme.BMOColors.BMOInfo.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOInfo,
-            "Pending"
-        )
-        ReviewStatus.IN_REVIEW -> Triple(
-            org.example.theme.BMOColors.BMOWarning.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOWarning,
-            "In Review"
-        )
-        ReviewStatus.APPROVED -> Triple(
-            org.example.theme.BMOColors.BMOSuccess.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOSuccess,
-            "Approved"
-        )
-        ReviewStatus.PARTIAL -> Triple(
-            org.example.theme.BMOColors.BMOAccentBlue.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOAccentBlue,
-            "Partial"
-        )
-        ReviewStatus.DECLINED -> Triple(
-            org.example.theme.BMOColors.BMOError.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOError,
-            "Declined"
-        )
-    }
-    
-    Surface(
-        color = backgroundColor,
-        shape = MaterialTheme.shapes.small
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            color = textColor,
-            style = MaterialTheme.typography.body2,
-            fontWeight = FontWeight.Medium
-        )
     }
 }

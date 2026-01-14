@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="AnalystHelper:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/AnalystHelper_jar</output-path>
+    <root id="archive" name="AnalystHelper.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/build/generated/compose/resourceGenerator/assembledResources/Main/META-INF/MANIFEST.MF" />
+      </element>
+    </root>
+  </artifact>
+</component>

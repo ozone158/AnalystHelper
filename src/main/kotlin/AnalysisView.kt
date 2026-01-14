@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
@@ -24,7 +25,8 @@ data class StartupSubmissionData(
     val problemStatement: String,
     val proposedSolution: String,
     val stage: StartupStage,
-    val files: List<FileEntry>
+    val files: List<FileEntry>,
+    val criteriaAnswers: Map<String, String> = emptyMap() // Map of question ID to answer
 )
 
 @Composable
@@ -39,12 +41,35 @@ fun AnalysisView(
     var showSubmitSuccess by remember { mutableStateOf(false) }
     var submitMessage by remember { mutableStateOf("") }
     
-    val analysisResult = remember(submissionData) {
-        aiService.analyzeSubmissionSync(submissionData)
-    }
+    // Track expanded state for categories and criteria
+    var expandedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var expandedCriteria by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var expandedRisks by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var showRecommendationReasoning by remember { mutableStateOf(false) }
     
-    val analysisText = remember(analysisResult) {
-        aiService.formatAnalysisResult(analysisResult)
+    // Loading and analysis state
+    var isLoading by remember { mutableStateOf(true) }
+    var analysisResult by remember { mutableStateOf<org.example.model.AnalysisResult?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var retryTrigger by remember { mutableStateOf(0) }
+    
+    // Load analysis asynchronously
+    LaunchedEffect(submissionData, retryTrigger) {
+        if (retryTrigger == 0 || retryTrigger > 0) {
+            isLoading = true
+            errorMessage = null
+            try {
+                val result = aiService.analyzeSubmission(submissionData)
+                // Automatically save analysis to local storage
+                databaseService.saveAnalysisSync(submissionData, result)
+                analysisResult = result
+            } catch (e: Exception) {
+                errorMessage = "Failed to analyze submission: ${e.message}"
+                e.printStackTrace()
+            } finally {
+                isLoading = false
+            }
+        }
     }
     Column(
         modifier = Modifier
@@ -57,10 +82,19 @@ fun AnalysisView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Analysis Results",
-                style = MaterialTheme.typography.h4
-            )
+            Column {
+                Text(
+                    text = "Analysis Results",
+                    style = MaterialTheme.typography.h4,
+                    color = MaterialTheme.colors.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "BMO AI Evaluation",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
             Button(onClick = onBack) {
                 Text("Back")
             }
@@ -68,80 +102,84 @@ fun AnalysisView(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Analysis content
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Startup name
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = 2.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+        // Show loading, error, or analysis content
+        when {
+            isLoading -> {
+                // Loading indicator
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Startup: ${submissionData.startupName}",
-                        style = MaterialTheme.typography.h6
-                    )
-                    Text(
-                        text = "Industry: ${submissionData.industry}",
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    Text(
-                        text = "Stage: ${submissionData.stage.name.lowercase().replace("_", " ").replaceFirstChar { it.uppercase() }}",
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Text(
+                            text = "Analyzing your submission...",
+                            style = MaterialTheme.typography.h6,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = "This may take a few moments",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
-            
-            // AI Analysis section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            errorMessage != null -> {
+                // Error message
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "AI Analysis",
-                        style = MaterialTheme.typography.h5,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    Text(
-                        text = analysisText,
-                        style = MaterialTheme.typography.body1
-                    )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        elevation = 4.dp,
+                        backgroundColor = MaterialTheme.colors.error.copy(alpha = 0.1f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "⚠️ Analysis Error",
+                                style = MaterialTheme.typography.h6,
+                                color = MaterialTheme.colors.error
+                            )
+                            Text(
+                                text = errorMessage ?: "Unknown error occurred",
+                                style = MaterialTheme.typography.body1
+                            )
+                            Button(
+                                onClick = {
+                                    retryTrigger++
+                                }
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Export PDF button
-                Button(
-                    onClick = {
+            analysisResult != null -> {
+                // Analysis content
+                AnalysisContent(
+                    submissionData = submissionData,
+                    analysisResult = analysisResult!!,
+                    showRecommendationReasoning = showRecommendationReasoning,
+                    onToggleRecommendationReasoning = { showRecommendationReasoning = !showRecommendationReasoning },
+                    onExportPDF = {
                         exportToPDF(submissionData, aiService)
                         showExportSuccess = true
                     },
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    colors = ButtonDefaults.outlinedButtonColors()
-                ) {
-                    Text("Export as PDF")
-                }
-                
-                // Submit to BMO button
-                Button(
-                    onClick = {
+                    onSubmitToBMO = {
                         val result = databaseService.submitToDatabaseSync(submissionData)
                         submitMessage = when (result) {
                             is DatabaseResult.Success -> result.message
@@ -149,11 +187,8 @@ fun AnalysisView(
                         }
                         onSubmitToBMO(result)
                         showSubmitSuccess = true
-                    },
-                    modifier = Modifier.weight(1f).height(50.dp)
-                ) {
-                    Text("Submit to BMO")
-                }
+                    }
+                )
             }
         }
     }
@@ -191,6 +226,509 @@ fun AnalysisView(
         )
     }
 }
+
+@Composable
+private fun AnalysisContent(
+    submissionData: StartupSubmissionData,
+    analysisResult: org.example.model.AnalysisResult,
+    showRecommendationReasoning: Boolean,
+    onToggleRecommendationReasoning: () -> Unit,
+    onExportPDF: () -> Unit,
+    onSubmitToBMO: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+            // Startup name
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Startup: ${submissionData.startupName}",
+                        style = MaterialTheme.typography.h6
+                    )
+                    Text(
+                        text = "Industry: ${submissionData.industry}",
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Text(
+                        text = "Stage: ${submissionData.stage.name.lowercase().replace("_", " ").replaceFirstChar { it.uppercase() }}",
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            
+            // Check for insufficient data
+            val hasInsufficientData = analysisResult.categoryScores.any { category ->
+                category.criteriaScores.any { it.score == 0 && it.insufficientData }
+            }
+            val missingDataCriteria = analysisResult.categoryScores.flatMap { category ->
+                category.criteriaScores.filter { it.score == 0 && it.insufficientData }
+            }
+            
+            // Overall Score Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Overall Score",
+                            style = MaterialTheme.typography.h6,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${String.format("%.1f", analysisResult.overallScore)}/5",
+                            style = MaterialTheme.typography.h5,
+                            fontWeight = FontWeight.Bold,
+                            color = if (hasInsufficientData && analysisResult.overallScore == 0.0) 
+                                MaterialTheme.colors.error 
+                            else 
+                                MaterialTheme.colors.primary
+                        )
+                    }
+                    
+                    // Show warning if insufficient data
+                    if (hasInsufficientData) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            backgroundColor = MaterialTheme.colors.error.copy(alpha = 0.1f),
+                            elevation = 0.dp
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Text(
+                                    text = "⚠️ Incomplete Analysis",
+                                    style = MaterialTheme.typography.body2,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colors.error
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Some criteria could not be evaluated due to insufficient information. Please submit additional files to get a complete analysis.",
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.error
+                                )
+                                if (missingDataCriteria.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Missing information for:",
+                                        style = MaterialTheme.typography.caption,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colors.error
+                                    )
+                                    missingDataCriteria.forEach { criterion ->
+                                        if (!criterion.dataRequired.isNullOrBlank()) {
+                                            Text(
+                                                text = "• ${criterion.criterionName}: ${criterion.dataRequired}",
+                                                style = MaterialTheme.typography.caption,
+                                                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+                                                color = MaterialTheme.colors.error
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Recommendation: ${analysisResult.recommendation.name}",
+                            style = MaterialTheme.typography.body1,
+                            fontWeight = FontWeight.Medium
+                        )
+                        TextButton(onClick = onToggleRecommendationReasoning) {
+                            Text(if (showRecommendationReasoning) "▲" else "▼")
+                        }
+                    }
+                    if (showRecommendationReasoning) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = analysisResult.recommendationReasoning,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+            
+            // Category Scores
+            Text(
+                text = "Category Scores",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            
+            analysisResult.categoryScores.forEach { category ->
+                var isExpanded by remember { mutableStateOf(false) }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 2.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = category.categoryName,
+                                    style = MaterialTheme.typography.subtitle1,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Weight: ${String.format("%.0f", category.categoryWeight * 100)}%",
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "${String.format("%.1f", category.categoryScore)}/5",
+                                    style = MaterialTheme.typography.h6,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colors.primary
+                                )
+                                TextButton(onClick = { isExpanded = !isExpanded }) {
+                                    Text(if (isExpanded) "▲" else "▼")
+                                }
+                            }
+                        }
+                        
+                        if (isExpanded) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider()
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Category Reasoning
+                            Text(
+                                text = "Reasoning:",
+                                style = MaterialTheme.typography.body2,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = category.categoryReasoning,
+                                style = MaterialTheme.typography.body2,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 12.dp)
+                            )
+                            
+                            // Criteria Scores
+                            Text(
+                                text = "Criteria:",
+                                style = MaterialTheme.typography.body2,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            category.criteriaScores.forEach { criterion ->
+                                var criterionExpanded by remember { mutableStateOf(false) }
+                                
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp),
+                                    elevation = 1.dp,
+                                    backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.5f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = criterion.criterionName,
+                                                style = MaterialTheme.typography.body2,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${criterion.score}/5",
+                                                    style = MaterialTheme.typography.body1,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (criterion.score == 0 && criterion.insufficientData) 
+                                                        MaterialTheme.colors.error 
+                                                    else 
+                                                        MaterialTheme.colors.primary
+                                                )
+                                                TextButton(
+                                                    onClick = { criterionExpanded = !criterionExpanded }
+                                                ) {
+                                                    Text(
+                                                        text = if (criterionExpanded) "▲" else "▼",
+                                                        style = MaterialTheme.typography.caption
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        
+                                        if (criterionExpanded) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            
+                                            // Show insufficient data warning if applicable
+                                            if (criterion.score == 0 && criterion.insufficientData) {
+                                                Card(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(bottom = 8.dp),
+                                                    backgroundColor = MaterialTheme.colors.error.copy(alpha = 0.1f),
+                                                    elevation = 0.dp
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.padding(12.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "⚠️ Insufficient Information",
+                                                            style = MaterialTheme.typography.body2,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colors.error
+                                                        )
+                                                        Spacer(modifier = Modifier.height(4.dp))
+                                                        Text(
+                                                            text = "Score set to 0 due to missing information. Please submit additional files to enable proper evaluation.",
+                                                            style = MaterialTheme.typography.caption,
+                                                            color = MaterialTheme.colors.error
+                                                        )
+                                                        if (!criterion.dataRequired.isNullOrBlank()) {
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Text(
+                                                                text = "Required: ${criterion.dataRequired}",
+                                                                style = MaterialTheme.typography.caption,
+                                                                fontWeight = FontWeight.Medium,
+                                                                color = MaterialTheme.colors.error
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            Text(
+                                                text = criterion.reasoning,
+                                                style = MaterialTheme.typography.body2,
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                            if (criterion.supportingEvidence.isNotEmpty()) {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = "Supporting Evidence:",
+                                                    style = MaterialTheme.typography.caption,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                                )
+                                                criterion.supportingEvidence.forEach { evidence ->
+                                                    Text(
+                                                        text = "• $evidence",
+                                                        style = MaterialTheme.typography.caption,
+                                                        modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Risk Assessment
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Risk Assessment",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold
+            )
+            
+            val risks = listOf(
+                "Privacy/Security" to analysisResult.riskAssessment.privacySecurity,
+                "Compliance" to analysisResult.riskAssessment.compliance,
+                "Market" to analysisResult.riskAssessment.market,
+                "Technical" to analysisResult.riskAssessment.technical
+            )
+            
+            risks.forEach { (name, risk) ->
+                var isExpanded by remember { mutableStateOf(false) }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 2.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = risk.level.name,
+                                    style = MaterialTheme.typography.body1,
+                                    fontWeight = FontWeight.Medium,
+                                    color = when (risk.level) {
+                                        org.example.model.RiskLevel.HIGH -> MaterialTheme.colors.error
+                                        org.example.model.RiskLevel.MEDIUM -> MaterialTheme.colors.primary
+                                        org.example.model.RiskLevel.LOW -> MaterialTheme.colors.primaryVariant
+                                    }
+                                )
+                                TextButton(onClick = { isExpanded = !isExpanded }) {
+                                    Text(if (isExpanded) "▲" else "▼")
+                                }
+                            }
+                        }
+                        
+                        if (isExpanded) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Divider()
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = risk.description,
+                                style = MaterialTheme.typography.body2,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                            if (risk.concerns.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Concerns:",
+                                    style = MaterialTheme.typography.caption,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                )
+                                risk.concerns.forEach { concern ->
+                                    Text(
+                                        text = "• $concern",
+                                        style = MaterialTheme.typography.caption,
+                                        modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Key Strengths
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Key Strengths",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    analysisResult.keyStrengths.forEach { strength ->
+                        Text(
+                            text = "• $strength",
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                        )
+                    }
+                }
+            }
+            
+            // Key Concerns
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Key Concerns",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    analysisResult.keyConcerns.forEach { concern ->
+                        Text(
+                            text = "• $concern",
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Export PDF button
+                Button(
+                    onClick = onExportPDF,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    Text("Export as PDF")
+                }
+                
+                // Submit to BMO button
+                Button(
+                    onClick = onSubmitToBMO,
+                    modifier = Modifier.weight(1f).height(50.dp)
+                ) {
+                    Text("Submit to BMO")
+                }
+            }
+        }
+    }
 
 
 // Export analysis to PDF

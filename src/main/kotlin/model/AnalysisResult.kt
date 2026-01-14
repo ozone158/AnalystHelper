@@ -45,7 +45,11 @@ data class CriterionScore(
     val score: Int,
     val reasoning: String,
     @JsonProperty("supporting_evidence")
-    val supportingEvidence: List<String>
+    val supportingEvidence: List<String>,
+    @JsonProperty("insufficient_data")
+    val insufficientData: Boolean = false,
+    @JsonProperty("data_required")
+    val dataRequired: String? = null
 )
 
 data class RiskAssessment(
