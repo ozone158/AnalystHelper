@@ -1,14 +1,20 @@
 package org.example
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun FounderView(onBack: () -> Unit, onEnterProcess: () -> Unit = {}) {
+fun FounderView(
+    onBack: () -> Unit, 
+    onEnterProcess: () -> Unit = {},
+    onViewAnalyses: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -28,8 +34,17 @@ fun FounderView(onBack: () -> Unit, onEnterProcess: () -> Unit = {}) {
         
         // Title
         Text(
-            text = "Submit your startup idea to BMO",
+            text = "Submit Your Startup Idea",
             style = MaterialTheme.typography.h4,
+            color = MaterialTheme.colors.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        Text(
+            text = "Bank of Montreal Startup Evaluation",
+            style = MaterialTheme.typography.subtitle1,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 32.dp)
         )
         
@@ -68,14 +83,52 @@ fun FounderView(onBack: () -> Unit, onEnterProcess: () -> Unit = {}) {
         
         Spacer(modifier = Modifier.height(48.dp))
         
-        // Enter process button
-        Button(
-            onClick = onEnterProcess,
-            modifier = Modifier
-                .width(200.dp)
-                .height(50.dp)
+        // Action buttons
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Enter the process", style = MaterialTheme.typography.body1)
+            // Enter process button
+            Button(
+                onClick = onEnterProcess,
+                modifier = Modifier
+                    .width(240.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = MaterialTheme.colors.primary
+                ),
+                elevation = ButtonDefaults.elevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 2.dp
+                )
+            ) {
+                Text(
+                    "Start Submission",
+                    style = MaterialTheme.typography.button,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            
+            // View analyses button
+            OutlinedButton(
+                onClick = onViewAnalyses,
+                modifier = Modifier
+                    .width(240.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colors.primary
+                ),
+                border = BorderStroke(
+                    2.dp,
+                    MaterialTheme.colors.primary
+                )
+            ) {
+                Text(
+                    "View My Analyses",
+                    style = MaterialTheme.typography.button,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

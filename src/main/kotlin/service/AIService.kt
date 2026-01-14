@@ -36,7 +36,6 @@ interface AIService {
  * Ready for actual AI integration
  */
 class DefaultAIService : AIService {
-    private val criteriaConfig = CriteriaLoader.loadFromResources() ?: CriteriaLoader.getDefaultConfig()
     private val promptTemplate = PromptTemplateLoader.loadFromResources() ?: PromptTemplateLoader.getDefaultTemplate()
     
     override suspend fun analyzeSubmission(data: StartupSubmissionData): AnalysisResult {
@@ -49,10 +48,12 @@ class DefaultAIService : AIService {
         // TODO: Implement actual AI analysis
         // For now, return a structured placeholder result
         // When implementing, this should:
-        // 1. Build prompt from template with submission data and criteria
-        // 2. Call AI API (OpenAI, Anthropic, etc.)
-        // 3. Parse JSON response into AnalysisResult
-        // 4. Validate against criteria configuration
+        // 1. Load industry-specific criteria
+        // 2. Build prompt from template with submission data, criteria, and criteria answers
+        // 3. Call AI API (OpenAI, Anthropic, etc.)
+        // 4. Parse JSON response into AnalysisResult
+        // 5. Validate against criteria configuration
+        // Note: criteriaAnswers in data.criteriaAnswers should be included in the prompt
         
         return createPlaceholderResult(data)
     }

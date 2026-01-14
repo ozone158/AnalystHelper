@@ -73,10 +73,19 @@ fun SubmissionDetailView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = submission.submissionData.startupName,
-                style = MaterialTheme.typography.h4
-            )
+            Column {
+                Text(
+                    text = submission.submissionData.startupName,
+                    style = MaterialTheme.typography.h4,
+                    color = MaterialTheme.colors.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Submission Review",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
             Button(onClick = onBack) {
                 Text("Back")
             }

@@ -1,0 +1,101 @@
+# Energy Industry Scoring Criteria Configuration
+# Tailored for energy and cleantech startups with emphasis on policy, compliance, and environmental impact
+
+categories:
+  - name: "Team & Governance"
+    weight: 0.20
+    criteria:
+      - name: "Industry Experience Match"
+        weight: 0.40
+        description: "Core team's relevant energy sector experience, entrepreneurial/management track record in energy/cleantech"
+      - name: "Equity Structure Stability"
+        weight: 0.30
+        description: "Equity structure stability, avoiding excessive founder dilution or proxy holding disputes"
+      - name: "Governance Structure"
+        weight: 0.30
+        description: "Completeness of governance mechanisms (board, environmental compliance, regulatory oversight)"
+  
+  - name: "Business & Market"
+    weight: 0.25
+    criteria:
+      - name: "Customer Validation"
+        weight: 0.30
+        description: "Degree of customer validation including paying customers, Power Purchase Agreements (PPA), repurchase rate"
+      - name: "Market Opportunity"
+        weight: 0.35
+        description: "Market space size, growth rate in energy sector, renewable energy market dynamics"
+      - name: "Competitive Barriers"
+        weight: 0.35
+        description: "Technology differentiation, exclusive resources (access to grid, permits), first-mover advantage, core capabilities"
+  
+  - name: "Product & Technology"
+    weight: 0.20
+    criteria:
+      - name: "Innovation Level"
+        weight: 0.30
+        description: "Technology innovation in energy/cleantech solutions"
+      - name: "Technical Feasibility"
+        weight: 0.40
+        description: "Technical feasibility for energy systems, infrastructure, or clean technology implementation"
+      - name: "Scalability"
+        weight: 0.30
+        description: "Ability to scale energy solution and infrastructure"
+  
+  - name: "Financial & Cash Flow"
+    weight: 0.20
+    criteria:
+      - name: "Cash Flow Health"
+        weight: 0.40
+        description: "Operating cash flow positivity, cash runway (months of operations), project financing capability"
+      - name: "Cost Control"
+        weight: 0.35
+        description: "Cost control capability including Levelized Cost of Energy (LCOE), operational efficiency"
+      - name: "Financing History"
+        weight: 0.25
+        description: "Previous investors' background, financing timeliness, government grants/subsidies access"
+  
+  - name: "Risk & Compliance"
+    weight: 0.15
+    criteria:
+      - name: "Policy Considerations"
+        weight: 0.30
+        description: "Alignment with government energy policies, subsidies, incentives, and regulatory support"
+      - name: "Regulatory/Compliance Risk"
+        weight: 0.30
+        description: "Regulatory compliance, permits, environmental regulations, energy policy considerations"
+      - name: "Environmental Impact"
+        weight: 0.20
+        description: "Environmental impact assessment and sustainability, carbon footprint reduction"
+      - name: "Legal Risk"
+        weight: 0.20
+        description: "Intellectual property disputes, land use rights, project contracts, labor compliance"
+
+rubrics:
+  score_levels:
+    - level: 5
+      label: "Excellent"
+      description: "Exceeds expectations, strong competitive advantage"
+    - level: 4
+      label: "Good"
+      description: "Meets expectations, solid fundamentals"
+    - level: 3
+      label: "Average"
+      description: "Meets basic requirements, some concerns"
+    - level: 2
+      label: "Below Average"
+      description: "Does not fully meet requirements, significant concerns"
+    - level: 1
+      label: "Poor"
+      description: "Fails to meet requirements, major issues"
+
+decision_mapping:
+  fund:
+    min_score: 4.0
+    description: "Recommend funding - strong potential"
+  partial:
+    min_score: 3.0
+    max_score: 3.9
+    description: "Recommend partial funding - moderate potential with conditions"
+  decline:
+    max_score: 2.9
+    description: "Recommend decline - insufficient potential or high risk"

@@ -1,74 +1,58 @@
 # Scoring Criteria Configuration
-# This file defines the evaluation dimensions, criteria, weights, and rubrics
+# Comprehensive evaluation framework for startup investments
 
 categories:
-  - name: "Market Opportunity"
+  - name: "Team & Governance"
     weight: 0.25
     criteria:
-      - name: "Market Size"
-        weight: 0.4
-        description: "Total addressable market (TAM) assessment"
-      - name: "Market Growth"
-        weight: 0.3
-        description: "Expected market growth rate"
-      - name: "Competitive Landscape"
-        weight: 0.3
-        description: "Competition intensity and differentiation potential"
-  
-  - name: "Product & Technology"
-    weight: 0.25
-    criteria:
-      - name: "Innovation Level"
+      - name: "Industry Experience Match"
         weight: 0.35
-        description: "Technology innovation and uniqueness"
-      - name: "Feasibility"
-        weight: 0.35
-        description: "Technical feasibility and development capability"
-      - name: "Scalability"
+        description: "Core team's relevant industry experience, entrepreneurial/management track record in target sector"
+      - name: "Equity Structure Stability"
         weight: 0.30
-        description: "Ability to scale the solution"
+        description: "Equity structure stability, avoiding excessive founder dilution or proxy holding disputes"
+      - name: "Governance Structure"
+        weight: 0.35
+        description: "Completeness of governance mechanisms (board of directors, risk control, compliance departments)"
   
-  - name: "Business Model"
+  - name: "Business & Market"
+    weight: 0.30
+    criteria:
+      - name: "Customer Validation"
+        weight: 0.35
+        description: "Degree of customer validation including paying customers, repurchase rate, customer unit price"
+      - name: "Market Opportunity"
+        weight: 0.35
+        description: "Market space size, growth rate of target sector, policy support intensity"
+      - name: "Competitive Barriers"
+        weight: 0.30
+        description: "Technology patents, exclusive resources, first-mover advantage, core differentiators from competitors"
+  
+  - name: "Financial & Cash Flow"
+    weight: 0.25
+    criteria:
+      - name: "Cash Flow Health"
+        weight: 0.40
+        description: "Operating cash flow positivity, cash reserves supporting months of operations"
+      - name: "Cost Control"
+        weight: 0.35
+        description: "Customer Acquisition Cost (CAC) vs Lifetime Value (LTV) ratio, ideally LTV/CAC > 3"
+      - name: "Financing History"
+        weight: 0.25
+        description: "Background of previous investors, financing arrival timeliness, presence of earnout clauses"
+  
+  - name: "Risk & Compliance"
     weight: 0.20
     criteria:
-      - name: "Revenue Model"
-        weight: 0.4
-        description: "Clarity and viability of revenue streams"
-      - name: "Unit Economics"
-        weight: 0.3
-        description: "Unit economics and profitability potential"
-      - name: "Go-to-Market Strategy"
-        weight: 0.3
-        description: "Marketing and distribution strategy"
-  
-  - name: "Team & Execution"
-    weight: 0.15
-    criteria:
-      - name: "Team Experience"
-        weight: 0.4
-        description: "Relevant experience and expertise"
-      - name: "Execution Capability"
+      - name: "Policy Compliance Risk"
         weight: 0.35
-        description: "Ability to execute on the plan"
-      - name: "Stage Appropriateness"
-        weight: 0.25
-        description: "Team size and capability match current stage"
-  
-  - name: "Risk Assessment"
-    weight: 0.15
-    criteria:
-      - name: "Regulatory/Compliance Risk"
-        weight: 0.25
-        description: "Regulatory and compliance considerations"
-      - name: "Privacy/Security Risk"
-        weight: 0.25
-        description: "Data privacy and security concerns"
-      - name: "Market Risk"
-        weight: 0.25
-        description: "Market adoption and timing risks"
-      - name: "Technical Risk"
-        weight: 0.25
-        description: "Technical implementation and execution risks"
+        description: "Data security compliance, industry regulatory policy alignment"
+      - name: "Legal Risk"
+        weight: 0.35
+        description: "Intellectual property disputes, labor compliance issues"
+      - name: "Collateral Guarantee"
+        weight: 0.30
+        description: "Founder joint guarantee, core technology pledge possibility (startups often lack physical assets)"
 
 rubrics:
   score_levels:

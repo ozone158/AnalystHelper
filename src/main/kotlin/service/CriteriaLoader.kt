@@ -16,12 +16,21 @@ object CriteriaLoader {
     
     /**
      * Loads criteria configuration from resources
+     * @param industry Optional industry name to load industry-specific criteria
+     * @return CriteriaConfig or null if file not found
      */
-    fun loadFromResources(): CriteriaConfig? {
+    fun loadFromResources(industry: String? = null): CriteriaConfig? {
         return try {
+            // Determine which criteria file to load based on industry
+            val fileName = when (industry?.lowercase()) {
+                "tech" -> "criteria_tech.yaml"
+                "energy" -> "criteria_energy.yaml"
+                else -> "criteria.yaml" // Default criteria
+            }
+            
             val inputStream: InputStream? = CriteriaLoader::class.java
                 .classLoader
-                .getResourceAsStream("criteria.yaml")
+                .getResourceAsStream(fileName)
             
             inputStream?.use {
                 yamlMapper.readValue(it, CriteriaConfig::class.java)
