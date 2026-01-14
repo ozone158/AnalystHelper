@@ -1,15 +1,16 @@
-name: Build Desktop Installers
+name: Build macOS App
 
 on:
   workflow_dispatch:
 
 jobs:
   build-macos:
-    name: macOS (dmg)
+    name: macOS (dmg/pkg)
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -20,12 +21,15 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
-      - name: Build DMG
-        run: ./gradlew clean packageDmg
+      - name: Show tasks (debug)
+        run: ./gradlew tasks --all
+
+      - name: Build distributable (fallback)
+        run: ./gradlew clean createDistributable
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
+          name: macos-distributable
           path: |
-            **/build/compose/binaries/**/dmg/*.dmg
+            **/build/compose/**
