@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.example.model.CriteriaConfig
+import org.example.model.CommonConfig
+import org.example.model.IndustryConfig
 import java.io.InputStream
 
 /**
- * Loads criteria configuration from YAML file
+ * Loads criteria configuration from YAML files
+ * Supports both legacy single-file format and new modular format
  */
 object CriteriaLoader {
     private val yamlMapper = ObjectMapper(YAMLFactory()).apply {
@@ -15,19 +18,101 @@ object CriteriaLoader {
     }
     
     /**
-     * Loads criteria configuration from resources
+     * Loads criteria configuration from resources using modular structure
+     * Loads common.yaml and industry-specific file, then merges them
      * @param industry Optional industry name to load industry-specific criteria
-     * @return CriteriaConfig or null if file not found
+     * @param databaseService Optional database service to check for custom criteria first
+     * @return CriteriaConfig or null if files not found
      */
-    fun loadFromResources(industry: String? = null): CriteriaConfig? {
+    fun loadFromResources(industry: String? = null, databaseService: org.example.service.database.DatabaseService? = null): CriteriaConfig? {
         return try {
-            // Determine which criteria file to load based on industry
-            val fileName = when (industry?.lowercase()) {
-                "tech" -> "criteria_tech.yaml"
-                "energy" -> "criteria_energy.yaml"
-                else -> "criteria.yaml" // Default criteria
+            // First check if there's a custom config in database
+            if (industry != null && databaseService != null) {
+                val customConfig = databaseService.loadCriteriaConfigSync(industry)
+                if (customConfig != null) {
+                    return customConfig
+                }
             }
+            // Try to load from new modular structure first
+            loadModularConfig(industry) ?: loadLegacyConfig(industry)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+    
+    /**
+     * Loads configuration from new modular structure
+     * Combines common.yaml with industry-specific categories
+     */
+    private fun loadModularConfig(industry: String?): CriteriaConfig? {
+        // Load common configuration (rubrics and decision_mapping)
+        val commonConfig = loadCommonConfig() ?: return null
+        
+        // Load industry-specific categories
+        val industryConfig = loadIndustryConfig(industry) ?: return null
+        
+        // Merge into complete CriteriaConfig
+        return CriteriaConfig(
+            categories = industryConfig.categories,
+            rubrics = commonConfig.rubrics,
+            decisionMapping = commonConfig.decisionMapping
+        )
+    }
+    
+    /**
+     * Loads common configuration from criteria/common.yaml
+     */
+    private fun loadCommonConfig(): CommonConfig? {
+        return try {
+            val inputStream: InputStream? = CriteriaLoader::class.java
+                .classLoader
+                .getResourceAsStream("criteria/common.yaml")
             
+            inputStream?.use {
+                yamlMapper.readValue(it, CommonConfig::class.java)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    /**
+     * Loads industry-specific categories from criteria/industries/{industry}.yaml
+     */
+    private fun loadIndustryConfig(industry: String?): IndustryConfig? {
+        // Determine which industry file to load
+        val fileName = when (industry?.lowercase()) {
+            "tech" -> "criteria/industries/tech.yaml"
+            "energy" -> "criteria/industries/energy.yaml"
+            else -> "criteria/industries/default.yaml"
+        }
+        
+        return try {
+            val inputStream: InputStream? = CriteriaLoader::class.java
+                .classLoader
+                .getResourceAsStream(fileName)
+            
+            inputStream?.use {
+                yamlMapper.readValue(it, IndustryConfig::class.java)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    /**
+     * Loads configuration from legacy single-file format (backward compatibility)
+     */
+    private fun loadLegacyConfig(industry: String?): CriteriaConfig? {
+        // Determine which criteria file to load based on industry
+        val fileName = when (industry?.lowercase()) {
+            "tech" -> "criteria_tech.yaml"
+            "energy" -> "criteria_energy.yaml"
+            else -> "criteria.yaml" // Default criteria
+        }
+        
+        return try {
             val inputStream: InputStream? = CriteriaLoader::class.java
                 .classLoader
                 .getResourceAsStream(fileName)
@@ -36,7 +121,6 @@ object CriteriaLoader {
                 yamlMapper.readValue(it, CriteriaConfig::class.java)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }

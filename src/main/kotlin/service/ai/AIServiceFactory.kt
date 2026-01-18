@@ -1,8 +1,7 @@
-package org.example.service
+package org.example.service.ai
 
-import org.example.service.provider.openai.OpenAIService
-import org.example.config.AIConfig
-import org.example.config.AIProviderType
+import org.example.service.ai.provider.openai.OpenAIService
+import org.example.service.ai.provider.default.DefaultAIService
 
 /**
  * Factory for creating AI service instances

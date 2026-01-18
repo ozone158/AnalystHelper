@@ -1,17 +1,19 @@
-package org.example
+package org.example.founder
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.model.SubmissionReview
-import org.example.model.ReviewNote
-import org.example.service.AIService
+import org.example.service.ai.AIService
+import org.example.shared.StatusChip
+import org.example.shared.InfoRow
+import org.example.shared.NoteItem
 
 @Composable
 fun FounderAnalysisDetailView(

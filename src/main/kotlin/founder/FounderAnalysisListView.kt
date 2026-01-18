@@ -1,4 +1,4 @@
-package org.example
+package org.example.founder
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.model.SubmissionReview
-import org.example.model.ReviewStatus
-import org.example.service.DatabaseService
+import org.example.service.database.DatabaseService
+import org.example.shared.StatusChip
 
 @Composable
 fun FounderAnalysisListView(

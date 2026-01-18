@@ -1,4 +1,4 @@
-package org.example
+package org.example.bank
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*

@@ -10,6 +10,7 @@ Analyze the provided startup submission according to the evaluation criteria and
 3. Clear identification of factors that influenced scoring
 4. Risk assessment across key dimensions
 5. Final recommendation (Fund/Partial/Decline)
+6. Qualitative forecast for the startup's future prospects
 
 **IMPORTANT**: If founder responses to evaluation questions are provided, use them as primary sources of information for scoring the relevant criteria. These responses directly address the evaluation criteria and should be heavily weighted in your analysis.
 
@@ -39,7 +40,16 @@ Explicitly assess and document:
 - **Market Risks**: Competition, timing, adoption challenges
 - **Technical Risks**: Feasibility, scalability, implementation challenges
 
-### 4. Output Format
+### 4. Qualitative Forecast
+Provide a comprehensive qualitative forecast for the startup's future prospects. This should include:
+- **Short-term Outlook (6-12 months)**: Expected near-term developments, milestones, and challenges
+- **Medium-term Prospects (1-3 years)**: Growth trajectory, market positioning, and key success indicators
+- **Long-term Potential (3-5+ years)**: Vision for scalability, market leadership potential, and strategic positioning
+- **Key Success Factors**: Critical factors that will determine the startup's success
+- **Potential Challenges**: Anticipated obstacles and how they might be addressed
+- **Market Trends Impact**: How evolving market trends, technology shifts, and industry dynamics may affect the startup
+
+### 5. Output Format
 You MUST output your analysis in the following JSON structure:
 
 ```json
@@ -94,11 +104,19 @@ You MUST output your analysis in the following JSON structure:
     "completeness": "<complete|partial|incomplete>",
     "gaps": ["<gap 1>", "<gap 2>"],
     "impact_on_analysis": "<string>"
+  },
+  "qualitative_forecast": {
+    "short_term_outlook": "<string - 2-3 sentences describing expected developments in 6-12 months>",
+    "medium_term_prospects": "<string - 2-3 sentences describing growth trajectory and positioning in 1-3 years>",
+    "long_term_potential": "<string - 2-3 sentences describing vision and strategic positioning in 3-5+ years>",
+    "key_success_factors": ["<factor 1>", "<factor 2>", "<factor 3>"],
+    "potential_challenges": ["<challenge 1>", "<challenge 2>", "<challenge 3>"],
+    "market_trends_impact": "<string - 2-3 sentences describing how market trends and industry dynamics may affect the startup>"
   }
 }
 ```
 
-### 5. Decision Mapping
+### 6. Decision Mapping
 - **Fund**: Overall score >= 4.0 - Strong potential, recommend funding
 - **Partial**: Overall score 3.0-3.9 - Moderate potential, recommend with conditions
 - **Decline**: Overall score < 3.0 - Insufficient potential or high risk

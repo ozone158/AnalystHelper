@@ -1,4 +1,4 @@
-package org.example
+package org.example.bank
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,13 +12,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.model.SubmissionReview
 import org.example.model.ReviewStatus
-import org.example.service.DatabaseService
+import org.example.service.database.DatabaseService
+import org.example.shared.StatusChip
 
 @Composable
 fun SubmissionReviewListView(
     databaseService: DatabaseService,
     onBack: () -> Unit,
-    onSelectSubmission: (SubmissionReview) -> Unit
+    onSelectSubmission: (SubmissionReview) -> Unit,
+    onManageIndustryFiles: () -> Unit = {},
+    onManageCriteria: () -> Unit = {}
 ) {
     var submissions by remember { mutableStateOf<List<SubmissionReview>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -52,8 +55,18 @@ fun SubmissionReviewListView(
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
             }
-            Button(onClick = onBack) {
-                Text("Back")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(onClick = onManageCriteria) {
+                    Text("Manage Criteria")
+                }
+                OutlinedButton(onClick = onManageIndustryFiles) {
+                    Text("Manage Industry Files")
+                }
+                Button(onClick = onBack) {
+                    Text("Back")
+                }
             }
         }
         
@@ -133,49 +146,5 @@ fun SubmissionReviewItem(
             
             StatusChip(status = submission.status)
         }
-    }
-}
-
-@Composable
-fun StatusChip(status: ReviewStatus) {
-    val (backgroundColor, textColor, text) = when (status) {
-        ReviewStatus.PENDING -> Triple(
-            org.example.theme.BMOColors.BMOInfo.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOInfo,
-            "Pending"
-        )
-        ReviewStatus.IN_REVIEW -> Triple(
-            org.example.theme.BMOColors.BMOWarning.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOWarning,
-            "In Review"
-        )
-        ReviewStatus.APPROVED -> Triple(
-            org.example.theme.BMOColors.BMOSuccess.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOSuccess,
-            "Approved"
-        )
-        ReviewStatus.PARTIAL -> Triple(
-            org.example.theme.BMOColors.BMOAccentBlue.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOAccentBlue,
-            "Partial"
-        )
-        ReviewStatus.DECLINED -> Triple(
-            org.example.theme.BMOColors.BMOError.copy(alpha = 0.1f),
-            org.example.theme.BMOColors.BMOError,
-            "Declined"
-        )
-    }
-    
-    Surface(
-        color = backgroundColor,
-        shape = MaterialTheme.shapes.small
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            color = textColor,
-            style = MaterialTheme.typography.body2,
-            fontWeight = FontWeight.Medium
-        )
     }
 }

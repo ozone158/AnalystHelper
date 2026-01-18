@@ -1,4 +1,4 @@
-package org.example
+package org.example.bank
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,8 +12,12 @@ import androidx.compose.ui.unit.dp
 import org.example.model.SubmissionReview
 import org.example.model.ReviewStatus
 import org.example.model.ReviewNote
-import org.example.service.AIService
-import org.example.service.DatabaseService
+import org.example.service.ai.AIService
+import org.example.service.database.DatabaseService
+import org.example.service.database.DatabaseResult
+import org.example.shared.StatusChip
+import org.example.shared.InfoRow
+import org.example.shared.NoteItem
 import java.util.Date
 import java.util.UUID
 
@@ -36,7 +40,7 @@ fun SubmissionDetailView(
     
     fun handleStatusChange(newStatus: ReviewStatus) {
         val result = databaseService.updateSubmissionStatusSync(submission.id, newStatus)
-        if (result is org.example.service.DatabaseResult.Success) {
+        if (result is DatabaseResult.Success) {
             currentStatus = newStatus
             showStatusDialog = false
             successMessage = "Status updated successfully"
@@ -52,7 +56,7 @@ fun SubmissionDetailView(
                 createdAt = Date()
             )
             val result = databaseService.addNoteToSubmissionSync(submission.id, note)
-            if (result is org.example.service.DatabaseResult.Success) {
+            if (result is DatabaseResult.Success) {
                 notes = notes + note
                 noteText = ""
                 showNoteDialog = false
@@ -295,41 +299,6 @@ fun SubmissionDetailView(
                     Text("OK")
                 }
             }
-        )
-    }
-}
-
-@Composable
-fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        Text(
-            text = "$label: ",
-            style = MaterialTheme.typography.body2,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.body2
-        )
-    }
-}
-
-@Composable
-fun NoteItem(note: ReviewNote) {
-    Column {
-        Text(
-            text = note.content,
-            style = MaterialTheme.typography.body2
-        )
-        Text(
-            text = "${note.createdBy} - ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(note.createdAt)}",
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.padding(top = 4.dp)
         )
     }
 }

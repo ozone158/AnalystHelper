@@ -1,14 +1,17 @@
-package org.example.service.provider.openai
+package org.example.service.ai.provider.openai
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import org.example.StartupSubmissionData
+import org.example.model.StartupSubmissionData
 import org.example.model.AnalysisResult
-import org.example.service.AIService
+import org.example.model.ExtractedStartupInfo
+import org.example.service.ai.AIService
+import org.example.service.ai.provider.default.DefaultAIService
 import org.example.service.CriteriaLoader
 import org.example.service.PromptTemplateLoader
+import org.example.service.FileReader
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -33,13 +36,18 @@ class OpenAIService(
     
     private val promptTemplate = PromptTemplateLoader.loadFromResources() ?: PromptTemplateLoader.getDefaultTemplate()
     
-    override suspend fun analyzeSubmission(data: StartupSubmissionData): AnalysisResult {
-        return analyzeSubmissionSync(data)
+    override suspend fun analyzeSubmission(data: StartupSubmissionData, industryFiles: List<org.example.model.IndustryFile>): AnalysisResult {
+        return analyzeSubmissionSync(data, industryFiles)
     }
     
-    override fun analyzeSubmissionSync(data: StartupSubmissionData): AnalysisResult {
+    override fun analyzeSubmissionSync(data: StartupSubmissionData, industryFiles: List<org.example.model.IndustryFile>): AnalysisResult {
         if (apiKey.isBlank()) {
             throw IllegalArgumentException("OpenAI API key is required. Please set it in the configuration.")
+        }
+        
+        // Filter industry files to only those matching the submission's industry
+        val relevantFiles = industryFiles.filter { 
+            it.industry.equals(data.industry, ignoreCase = true) 
         }
         
         try {
@@ -47,7 +55,7 @@ class OpenAIService(
             val criteriaConfig = CriteriaLoader.loadFromResources(data.industry) ?: CriteriaLoader.getDefaultConfig()
             
             // Build the prompt using template and submission data
-            val prompt = buildPrompt(data, criteriaConfig)
+            val prompt = buildPrompt(data, criteriaConfig, relevantFiles)
             
             // Call OpenAI API
             val response = callOpenAIAPI(prompt)
@@ -58,20 +66,72 @@ class OpenAIService(
         } catch (e: Exception) {
             e.printStackTrace()
             // Return placeholder result on error
-            return createPlaceholderResult(data)
+            return createPlaceholderResult(data, relevantFiles)
         }
     }
     
     override fun formatAnalysisResult(result: AnalysisResult): String {
         // Use the same formatting as DefaultAIService
-        val defaultService = org.example.service.DefaultAIService()
+        val defaultService = DefaultAIService()
         return defaultService.formatAnalysisResult(result)
+    }
+    
+    override suspend fun detectIndustry(documentText: String): String? {
+        return detectIndustrySync(documentText)
+    }
+    
+    override fun detectIndustrySync(documentText: String): String? {
+        if (apiKey.isBlank()) {
+            throw IllegalArgumentException("OpenAI API key is required. Please set it in the configuration.")
+        }
+        
+        try {
+            // Truncate document text if too long (keep first 10000 characters for cost efficiency)
+            val truncatedText = documentText.take(10000)
+            
+            val prompt = """
+                You are an AI assistant that analyzes business plans to determine the industry category.
+                
+                Based on the following business plan document, determine which industry category this startup belongs to.
+                
+                Available industry categories: Tech, Energy
+                
+                Analyze the document content and return ONLY the industry name (Tech or Energy) as a JSON object with the format:
+                {"industry": "Tech"} or {"industry": "Energy"}
+                
+                If you cannot determine the industry clearly, return: {"industry": null}
+                
+                Business Plan Content:
+                $truncatedText
+            """.trimIndent()
+            
+            val response = callOpenAIAPI(prompt)
+            val jsonResponse = objectMapper.readTree(response)
+            val industry = jsonResponse["industry"]?.asText()
+            
+            // Normalize to match our industry categories
+            return when (industry?.lowercase()) {
+                "tech", "technology" -> "Tech"
+                "energy" -> "Energy"
+                else -> null
+            }
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fall back to default implementation
+            val defaultService = DefaultAIService()
+            return defaultService.detectIndustrySync(documentText)
+        }
     }
     
     /**
      * Builds the prompt from template and submission data
      */
-    private fun buildPrompt(data: StartupSubmissionData, criteriaConfig: org.example.model.CriteriaConfig): String {
+    private fun buildPrompt(
+        data: StartupSubmissionData, 
+        criteriaConfig: org.example.model.CriteriaConfig,
+        industryFiles: List<org.example.model.IndustryFile>
+    ): String {
         val criteriaYaml = objectMapper.writeValueAsString(criteriaConfig)
         
         // Format criteria answers if available
@@ -102,10 +162,13 @@ class OpenAIService(
             $criteriaAnswersSection
             
             """ else ""}
+            ${if (industryFiles.isNotEmpty()) {
+                FileReader.formatIndustryFilesForPrompt(industryFiles)
+            } else ""}
             === CRITERIA CONFIGURATION ===
             $criteriaYaml
             
-            Please analyze this submission according to the criteria and provide your analysis in the specified JSON format.${if (criteriaAnswersSection.isNotEmpty()) " Pay special attention to the founder's responses to the evaluation questions, as they provide detailed information relevant to each criterion." else ""}
+            Please analyze this submission according to the criteria and provide your analysis in the specified JSON format.${if (criteriaAnswersSection.isNotEmpty()) " Pay special attention to the founder's responses to the evaluation questions, as they provide detailed information relevant to each criterion." else ""}${if (industryFiles.isNotEmpty()) " IMPORTANT: Use the industry statistics and data files provided above to inform your analysis, especially for market opportunity assessment, competitive analysis, and industry benchmarks. Compare the startup's claims against the industry data provided." else ""}
         """.trimIndent()
     }
     
@@ -217,10 +280,65 @@ class OpenAIService(
     /**
      * Creates a placeholder result (fallback)
      */
-    private fun createPlaceholderResult(data: StartupSubmissionData): AnalysisResult {
-        val defaultService = org.example.service.DefaultAIService()
+    private fun createPlaceholderResult(data: StartupSubmissionData, industryFiles: List<org.example.model.IndustryFile> = emptyList()): AnalysisResult {
+        val defaultService = DefaultAIService()
         // This will create a placeholder result
         // In a real scenario, you might want to handle errors differently
-        return defaultService.analyzeSubmissionSync(data)
+        return defaultService.analyzeSubmissionSync(data, industryFiles)
+    }
+    
+    override suspend fun extractStartupInfo(documentText: String): ExtractedStartupInfo {
+        return extractStartupInfoSync(documentText)
+    }
+    
+    override fun extractStartupInfoSync(documentText: String): ExtractedStartupInfo {
+        if (apiKey.isBlank()) {
+            throw IllegalArgumentException("OpenAI API key is required. Please set it in the configuration.")
+        }
+        
+        try {
+            // Truncate document text if too long (keep first 15000 characters for cost efficiency)
+            val truncatedText = documentText.take(15000)
+            
+            val prompt = """
+                You are an AI assistant that extracts key information from business plan documents.
+                
+                Based on the following business plan document, extract the following information:
+                1. Startup/Company Name
+                2. Problem Statement (the problem the startup is trying to solve)
+                3. Proposed Solution (the product/service being offered)
+                
+                Return ONLY a JSON object with the format:
+                {
+                    "startupName": "Name of the startup or company",
+                    "problemStatement": "Description of the problem being addressed (2-3 sentences)",
+                    "proposedSolution": "Description of the proposed solution/product/service (2-3 sentences)"
+                }
+                
+                If any information cannot be found, use null for that field.
+                
+                Business Plan Content:
+                $truncatedText
+            """.trimIndent()
+            
+            val response = callOpenAIAPI(prompt)
+            val jsonResponse = objectMapper.readTree(response)
+            
+            val startupName = jsonResponse["startupName"]?.takeIf { !it.isNull }?.asText()
+            val problemStatement = jsonResponse["problemStatement"]?.takeIf { !it.isNull }?.asText()
+            val proposedSolution = jsonResponse["proposedSolution"]?.takeIf { !it.isNull }?.asText()
+            
+            return ExtractedStartupInfo(
+                startupName = startupName,
+                problemStatement = problemStatement,
+                proposedSolution = proposedSolution
+            )
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fall back to default implementation
+            val defaultService = DefaultAIService()
+            return defaultService.extractStartupInfoSync(documentText)
+        }
     }
 }

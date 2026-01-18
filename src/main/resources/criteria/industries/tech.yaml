@@ -1,0 +1,71 @@
+# Tech Industry Scoring Criteria
+# Tailored for technology startups with emphasis on IP, scalability, and innovation
+
+categories:
+  - name: "Team & Governance"
+    weight: 0.25
+    criteria:
+      - name: "Technical Team Experience"
+        weight: 0.40
+        description: "Core team's relevant technology industry experience, entrepreneurial/management track record in tech sector"
+      - name: "Equity Structure Stability"
+        weight: 0.30
+        description: "Equity structure stability, avoiding excessive founder dilution or proxy holding disputes"
+      - name: "Governance Structure"
+        weight: 0.30
+        description: "Completeness of governance mechanisms (board, risk control, data privacy compliance)"
+  
+  - name: "Business & Market"
+    weight: 0.30
+    criteria:
+      - name: "Customer Validation"
+        weight: 0.30
+        description: "Degree of customer validation including paying customers (SaaS MRR/ARR), repurchase rate, customer unit price"
+      - name: "Market Opportunity"
+        weight: 0.30
+        description: "Market space size, growth rate in tech sector, policy support for technology innovation"
+      - name: "Number of Patents"
+        weight: 0.20
+        description: "Intellectual property portfolio including patents filed, pending, or granted"
+      - name: "Competitive Barriers"
+        weight: 0.20
+        description: "Technology differentiation, exclusive resources, first-mover advantage, core capabilities vs competitors"
+  
+  - name: "Product & Technology"
+    weight: 0.20
+    criteria:
+      - name: "Innovation Level"
+        weight: 0.35
+        description: "Technology innovation, uniqueness, and competitive advantage in tech sector"
+      - name: "Technical Feasibility"
+        weight: 0.35
+        description: "Technical feasibility and development capability for software/hardware solutions"
+      - name: "Scalability"
+        weight: 0.30
+        description: "Ability to scale the technology solution (cloud, infrastructure, architecture)"
+  
+  - name: "Financial & Cash Flow"
+    weight: 0.15
+    criteria:
+      - name: "Cash Flow Health"
+        weight: 0.40
+        description: "Operating cash flow positivity, cash runway (months of operations supported by reserves)"
+      - name: "Cost Control"
+        weight: 0.40
+        description: "Customer Acquisition Cost (CAC) vs Lifetime Value (LTV) ratio, ideally LTV/CAC > 3 for SaaS"
+      - name: "Financing History"
+        weight: 0.20
+        description: "Previous investors' background, financing timeliness, presence of earnout clauses"
+  
+  - name: "Risk & Compliance"
+    weight: 0.10
+    criteria:
+      - name: "Privacy/Security Risk"
+        weight: 0.40
+        description: "Data privacy and cybersecurity concerns, GDPR/CCPA compliance"
+      - name: "Policy Compliance Risk"
+        weight: 0.30
+        description: "Data security compliance, industry regulatory policy alignment"
+      - name: "Legal Risk"
+        weight: 0.30
+        description: "Intellectual property disputes, labor compliance, open-source licensing issues"

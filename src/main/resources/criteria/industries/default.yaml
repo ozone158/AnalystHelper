@@ -1,0 +1,55 @@
+# Default Industry Scoring Criteria
+# Comprehensive evaluation framework for general startup investments
+
+categories:
+  - name: "Team & Governance"
+    weight: 0.25
+    criteria:
+      - name: "Industry Experience Match"
+        weight: 0.35
+        description: "Core team's relevant industry experience, entrepreneurial/management track record in target sector"
+      - name: "Equity Structure Stability"
+        weight: 0.30
+        description: "Equity structure stability, avoiding excessive founder dilution or proxy holding disputes"
+      - name: "Governance Structure"
+        weight: 0.35
+        description: "Completeness of governance mechanisms (board of directors, risk control, compliance departments)"
+  
+  - name: "Business & Market"
+    weight: 0.30
+    criteria:
+      - name: "Customer Validation"
+        weight: 0.35
+        description: "Degree of customer validation including paying customers, repurchase rate, customer unit price"
+      - name: "Market Opportunity"
+        weight: 0.35
+        description: "Market space size, growth rate of target sector, policy support intensity"
+      - name: "Competitive Barriers"
+        weight: 0.30
+        description: "Technology patents, exclusive resources, first-mover advantage, core differentiators from competitors"
+  
+  - name: "Financial & Cash Flow"
+    weight: 0.25
+    criteria:
+      - name: "Cash Flow Health"
+        weight: 0.40
+        description: "Operating cash flow positivity, cash reserves supporting months of operations"
+      - name: "Cost Control"
+        weight: 0.35
+        description: "Customer Acquisition Cost (CAC) vs Lifetime Value (LTV) ratio, ideally LTV/CAC > 3"
+      - name: "Financing History"
+        weight: 0.25
+        description: "Background of previous investors, financing arrival timeliness, presence of earnout clauses"
+  
+  - name: "Risk & Compliance"
+    weight: 0.20
+    criteria:
+      - name: "Policy Compliance Risk"
+        weight: 0.35
+        description: "Data security compliance, industry regulatory policy alignment"
+      - name: "Legal Risk"
+        weight: 0.35
+        description: "Intellectual property disputes, labor compliance issues"
+      - name: "Collateral Guarantee"
+        weight: 0.30
+        description: "Founder joint guarantee, core technology pledge possibility (startups often lack physical assets)"

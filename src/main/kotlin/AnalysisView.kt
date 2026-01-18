@@ -14,20 +14,11 @@ import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.font.PDType1Font
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts
-import org.example.service.AIService
-import org.example.service.DatabaseService
-import org.example.service.DatabaseResult
+import org.example.service.ai.AIService
+import org.example.service.database.DatabaseService
+import org.example.service.database.DatabaseResult
+import org.example.model.StartupSubmissionData
 import java.io.File
-
-data class StartupSubmissionData(
-    val startupName: String,
-    val industry: String,
-    val problemStatement: String,
-    val proposedSolution: String,
-    val stage: StartupStage,
-    val files: List<FileEntry>,
-    val criteriaAnswers: Map<String, String> = emptyMap() // Map of question ID to answer
-)
 
 @Composable
 fun AnalysisView(
@@ -59,7 +50,10 @@ fun AnalysisView(
             isLoading = true
             errorMessage = null
             try {
-                val result = aiService.analyzeSubmission(submissionData)
+                // Get industry files for this submission's industry
+                val industryFiles = databaseService.getIndustryFilesSync(submissionData.industry)
+                
+                val result = aiService.analyzeSubmission(submissionData, industryFiles)
                 // Automatically save analysis to local storage
                 databaseService.saveAnalysisSync(submissionData, result)
                 analysisResult = result
@@ -164,6 +158,21 @@ fun AnalysisView(
                             ) {
                                 Text("Retry")
                             }
+                            
+                            LaunchedEffect(retryTrigger) {
+                                if (retryTrigger > 0) {
+                                    try {
+                                        val industryFiles = databaseService.getIndustryFilesSync(submissionData.industry)
+                                        val result = aiService.analyzeSubmission(submissionData, industryFiles)
+                                        databaseService.saveAnalysisSync(submissionData, result)
+                                        analysisResult = result
+                                    } catch (e: Exception) {
+                                        errorMessage = "Failed to analyze submission: ${e.message}"
+                                    } finally {
+                                        isLoading = false
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -266,6 +275,100 @@ private fun AnalysisContent(
                     )
                 }
             }
+            
+            // Data Completeness Assessment Card - AI's assessment of information sufficiency
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 3.dp,
+                backgroundColor = when (analysisResult.dataQuality.completeness) {
+                    org.example.model.Completeness.COMPLETE -> MaterialTheme.colors.primaryVariant.copy(alpha = 0.1f)
+                    org.example.model.Completeness.PARTIAL -> MaterialTheme.colors.primary.copy(alpha = 0.1f)
+                    org.example.model.Completeness.INCOMPLETE -> MaterialTheme.colors.error.copy(alpha = 0.1f)
+                }
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "📊 Data Completeness Assessment",
+                                style = MaterialTheme.typography.h6,
+                                fontWeight = FontWeight.Bold
+                            )
+                            // Status badge
+                            Card(
+                                backgroundColor = when (analysisResult.dataQuality.completeness) {
+                                    org.example.model.Completeness.COMPLETE -> MaterialTheme.colors.primaryVariant
+                                    org.example.model.Completeness.PARTIAL -> MaterialTheme.colors.primary
+                                    org.example.model.Completeness.INCOMPLETE -> MaterialTheme.colors.error
+                                },
+                                elevation = 0.dp
+                            ) {
+                                Text(
+                                    text = analysisResult.dataQuality.completeness.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.caption,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colors.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Impact on analysis
+                    Text(
+                        text = "Impact on Analysis:",
+                        style = MaterialTheme.typography.body2,
+                        fontWeight = FontWeight.Medium,
+                        color = when (analysisResult.dataQuality.completeness) {
+                            org.example.model.Completeness.COMPLETE -> MaterialTheme.colors.primaryVariant
+                            org.example.model.Completeness.PARTIAL -> MaterialTheme.colors.primary
+                            org.example.model.Completeness.INCOMPLETE -> MaterialTheme.colors.error
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = analysisResult.dataQuality.impactOnAnalysis,
+                        style = MaterialTheme.typography.body2,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                    
+                    // Show gaps if any
+                    if (analysisResult.dataQuality.gaps.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Information Gaps Identified:",
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = FontWeight.Medium,
+                            color = when (analysisResult.dataQuality.completeness) {
+                                org.example.model.Completeness.COMPLETE -> MaterialTheme.colors.primaryVariant
+                                org.example.model.Completeness.PARTIAL -> MaterialTheme.colors.primary
+                                org.example.model.Completeness.INCOMPLETE -> MaterialTheme.colors.error
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        analysisResult.dataQuality.gaps.forEach { gap ->
+                            Text(
+                                text = "• $gap",
+                                style = MaterialTheme.typography.body2,
+                                modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
             
             // Check for insufficient data
             val hasInsufficientData = analysisResult.categoryScores.any { category ->
@@ -703,6 +806,142 @@ private fun AnalysisContent(
                 }
             }
             
+            // Qualitative Forecast
+            if (analysisResult.qualitativeForecast != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 3.dp,
+                    backgroundColor = MaterialTheme.colors.primaryVariant.copy(alpha = 0.05f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "🔮 Qualitative Forecast",
+                                style = MaterialTheme.typography.h6,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Short-term Outlook
+                        Text(
+                            text = "Short-term Outlook (6-12 months)",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = analysisResult.qualitativeForecast.shortTermOutlook,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Medium-term Prospects
+                        Text(
+                            text = "Medium-term Prospects (1-3 years)",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = analysisResult.qualitativeForecast.mediumTermProspects,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Long-term Potential
+                        Text(
+                            text = "Long-term Potential (3-5+ years)",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = analysisResult.qualitativeForecast.longTermPotential,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Key Success Factors
+                        Text(
+                            text = "Key Success Factors",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        analysisResult.qualitativeForecast.keySuccessFactors.forEach { factor ->
+                            Text(
+                                text = "✓ $factor",
+                                style = MaterialTheme.typography.body2,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Potential Challenges
+                        Text(
+                            text = "Potential Challenges",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        analysisResult.qualitativeForecast.potentialChallenges.forEach { challenge ->
+                            Text(
+                                text = "⚠ $challenge",
+                                style = MaterialTheme.typography.body2,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Market Trends Impact
+                        Text(
+                            text = "Market Trends Impact",
+                            style = MaterialTheme.typography.subtitle2,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = analysisResult.qualitativeForecast.marketTrendsImpact,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(24.dp))
             
             // Action buttons
@@ -807,7 +1046,9 @@ fun exportToPDF(data: StartupSubmissionData, aiService: AIService) {
             // AI Analysis
             addText("AI Analysis", true)
             yPosition -= 5f
-            val analysisResult = aiService.analyzeSubmissionSync(data)
+            // Note: For PDF export, we don't have access to industry files here
+            // This is a limitation - in production, you might want to store industry files with the analysis
+            val analysisResult = aiService.analyzeSubmissionSync(data, emptyList())
             val analysisText = aiService.formatAnalysisResult(analysisResult)
             analysisText.split("\n").forEach { line ->
                 if (line.isNotBlank()) {
