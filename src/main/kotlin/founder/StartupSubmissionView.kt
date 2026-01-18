@@ -1,4 +1,4 @@
-package org.example
+package org.example.founder
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,30 +11,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.service.CriteriaLoader
 import org.example.service.QuestionGenerator
+import org.example.model.StartupSubmissionData
+import org.example.model.StartupStage
+import org.example.model.IndustryCategories
+import org.example.model.FileEntry
 import java.io.File
 
-enum class StartupStage {
-    IDEA,
-    MVP,
-    EARLY_REVENUE
-}
-
-// Available industry categories
-val IndustryCategories = listOf("Tech", "Energy", "More to come")
-
-data class FileEntry(
-    val id: Int,
-    var usage: String = "",
-    var file: File? = null
-)
-
 @Composable
-fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) -> Unit = {}) {
-    var startupName by remember { mutableStateOf("") }
-    var selectedIndustry by remember { mutableStateOf<String?>(null) }
+fun StartupSubmissionView(
+    onBack: () -> Unit, 
+    onSubmit: (StartupSubmissionData) -> Unit = {},
+    preSelectedIndustry: String? = null,
+    businessPlanFile: File? = null,
+    extractedInfo: org.example.model.ExtractedStartupInfo? = null
+) {
+    var startupName by remember { mutableStateOf(extractedInfo?.startupName ?: "") }
+    var selectedIndustry by remember { mutableStateOf<String?>(preSelectedIndustry) }
     var industryExpanded by remember { mutableStateOf(false) }
-    var problemStatement by remember { mutableStateOf("") }
-    var proposedSolution by remember { mutableStateOf("") }
+    var problemStatement by remember { mutableStateOf(extractedInfo?.problemStatement ?: "") }
+    var proposedSolution by remember { mutableStateOf(extractedInfo?.proposedSolution ?: "") }
     var selectedStage by remember { mutableStateOf<StartupStage?>(null) }
     var stageExpanded by remember { mutableStateOf(false) }
     var fileEntries by remember { mutableStateOf<List<FileEntry>>(emptyList()) }
@@ -49,6 +44,18 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
     var expandedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
     
     val scrollState = rememberScrollState()
+    
+    // Add business plan file to file entries if provided
+    LaunchedEffect(businessPlanFile) {
+        if (businessPlanFile != null && fileEntries.none { it.file == businessPlanFile }) {
+            fileEntries = fileEntries + FileEntry(
+                id = nextFileId,
+                usage = "Business Plan",
+                file = businessPlanFile
+            )
+            nextFileId++
+        }
+    }
     
     // Load criteria and generate questions when industry is selected
     LaunchedEffect(selectedIndustry) {
@@ -143,17 +150,23 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(
-                    text = "Startup Submission",
-                    style = MaterialTheme.typography.h4,
-                    color = MaterialTheme.colors.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "BMO Evaluation Form",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
+                Column {
+                    Text(
+                        text = "Startup Submission",
+                        style = MaterialTheme.typography.h4,
+                        color = MaterialTheme.colors.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (preSelectedIndustry != null) {
+                            "Step 2: Complete evaluation questions"
+                        } else {
+                            "BMO Evaluation Form"
+                        },
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
             Button(onClick = onBack) {
                 Text("Back")
@@ -169,57 +182,145 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Startup name
-            OutlinedTextField(
-                value = startupName,
-                onValueChange = { startupName = it },
-                label = { Text("Startup name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            
-            // Industry dropdown
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Industry",
-                    style = MaterialTheme.typography.body2,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Box {
-                    OutlinedButton(
-                        onClick = { industryExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
+            // Show auto-filled indicator if extracted info was provided
+            if (extractedInfo != null && (extractedInfo.startupName != null || extractedInfo.problemStatement != null || extractedInfo.proposedSolution != null)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 1.dp,
+                    backgroundColor = MaterialTheme.colors.primaryVariant.copy(alpha = 0.1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = selectedIndustry ?: "Select industry"
+                            text = "✓",
+                            color = MaterialTheme.colors.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Some fields have been auto-filled from your business plan",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary
                         )
                     }
-                    DropdownMenu(
-                        expanded = industryExpanded,
-                        onDismissRequest = { industryExpanded = false },
-                        modifier = Modifier.fillMaxWidth()
+                }
+            }
+            
+            // Startup name
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (extractedInfo?.startupName != null && startupName.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IndustryCategories.forEach { category ->
-                            val isSelectable = category != "More to come"
-                            DropdownMenuItem(
-                                onClick = {
-                                    if (isSelectable) {
-                                        selectedIndustry = category
-                                        industryExpanded = false
-                                    }
-                                },
-                                enabled = isSelectable
-                            ) {
-                                Text(
-                                    text = category,
-                                    style = if (isSelectable) {
-                                        MaterialTheme.typography.body1
-                                    } else {
-                                        MaterialTheme.typography.body2.copy(
-                                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                )
+                        Text(
+                            text = "Startup name",
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = "Auto-filled",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = startupName,
+                    onValueChange = { startupName = it },
+                    label = { Text("Startup name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+            
+            // Industry dropdown or display
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Industry",
+                        style = MaterialTheme.typography.body2,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    if (preSelectedIndustry != null) {
+                        Card(
+                            backgroundColor = MaterialTheme.colors.primaryVariant.copy(alpha = 0.1f),
+                            elevation = 0.dp
+                        ) {
+                            Text(
+                                text = "✓ Auto-detected",
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+                if (preSelectedIndustry != null) {
+                    // Show detected industry as read-only
+                    OutlinedTextField(
+                        value = selectedIndustry ?: "",
+                        onValueChange = { },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false,
+                        readOnly = true,
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            disabledTextColor = MaterialTheme.colors.onSurface,
+                            disabledBorderColor = MaterialTheme.colors.primary.copy(alpha = 0.5f)
+                        )
+                    )
+                    Text(
+                        text = "Industry detected from your business plan",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                } else {
+                    // Allow manual selection
+                    Box {
+                        OutlinedButton(
+                            onClick = { industryExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = selectedIndustry ?: "Select industry"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = industryExpanded,
+                            onDismissRequest = { industryExpanded = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            IndustryCategories.forEach { category ->
+                                val isSelectable = category != "More to come"
+                                DropdownMenuItem(
+                                    onClick = {
+                                        if (isSelectable) {
+                                            selectedIndustry = category
+                                            industryExpanded = false
+                                        }
+                                    },
+                                    enabled = isSelectable
+                                ) {
+                                    Text(
+                                        text = category,
+                                        style = if (isSelectable) {
+                                            MaterialTheme.typography.body1
+                                        } else {
+                                            MaterialTheme.typography.body2.copy(
+                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -227,24 +328,66 @@ fun StartupSubmissionView(onBack: () -> Unit, onSubmit: (StartupSubmissionData) 
             }
             
             // Problem statement
-            OutlinedTextField(
-                value = problemStatement,
-                onValueChange = { problemStatement = it },
-                label = { Text("Problem statement") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (extractedInfo?.problemStatement != null && problemStatement.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Problem statement",
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = "Auto-filled",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = problemStatement,
+                    onValueChange = { problemStatement = it },
+                    label = { Text("Problem statement") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
+            }
             
             // Proposed solution
-            OutlinedTextField(
-                value = proposedSolution,
-                onValueChange = { proposedSolution = it },
-                label = { Text("Proposed solution") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (extractedInfo?.proposedSolution != null && proposedSolution.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Proposed solution",
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = "Auto-filled",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = proposedSolution,
+                    onValueChange = { proposedSolution = it },
+                    label = { Text("Proposed solution") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
+            }
             
             // Stage dropdown
             Column(modifier = Modifier.fillMaxWidth()) {

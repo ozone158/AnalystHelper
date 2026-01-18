@@ -21,7 +21,9 @@ data class AnalysisResult(
     @JsonProperty("key_concerns")
     val keyConcerns: List<String>,
     @JsonProperty("data_quality")
-    val dataQuality: DataQuality
+    val dataQuality: DataQuality,
+    @JsonProperty("qualitative_forecast")
+    val qualitativeForecast: QualitativeForecast? = null
 )
 
 data class CategoryScore(
@@ -84,3 +86,18 @@ data class DataQuality(
 enum class Completeness {
     COMPLETE, PARTIAL, INCOMPLETE
 }
+
+data class QualitativeForecast(
+    @JsonProperty("short_term_outlook")
+    val shortTermOutlook: String,
+    @JsonProperty("medium_term_prospects")
+    val mediumTermProspects: String,
+    @JsonProperty("long_term_potential")
+    val longTermPotential: String,
+    @JsonProperty("key_success_factors")
+    val keySuccessFactors: List<String>,
+    @JsonProperty("potential_challenges")
+    val potentialChallenges: List<String>,
+    @JsonProperty("market_trends_impact")
+    val marketTrendsImpact: String
+)

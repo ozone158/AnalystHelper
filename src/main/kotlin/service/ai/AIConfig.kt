@@ -1,4 +1,4 @@
-package org.example.config
+package org.example.service.ai
 
 /**
  * AI Service Configuration
@@ -11,8 +11,7 @@ object AIConfig {
     val provider: AIProviderType = AIProviderType.OPENAI
     
     // Your OpenAI API key (leave empty to use OPENAI_API_KEY environment variable)
-    val openAIApiKey: String = "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"  // Put your API key here, or leave empty to use env var
-    
+    val openAIApiKey: String = ""
     // OpenAI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo)
     val openAIModel: String = "gpt-4o-mini"
 }

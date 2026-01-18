@@ -11,21 +11,35 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import org.example.service.AIService
-import org.example.service.DatabaseService
-import org.example.service.DefaultDatabaseService
-import org.example.service.AIServiceFactory
+import org.example.service.ai.AIService
+import org.example.service.database.DatabaseService
+import org.example.service.database.filebased.FileBasedDatabaseService
+import org.example.service.ai.AIServiceFactory
 import org.example.theme.BMTheme
+import org.example.bank.SubmissionReviewListView
+import org.example.bank.SubmissionDetailView
+import org.example.bank.IndustryFileManagementView
+import org.example.bank.CriteriaManagementView
+import org.example.founder.FounderView
+import org.example.founder.FounderAnalysisListView
+import org.example.founder.FounderAnalysisDetailView
+import org.example.founder.StartupSubmissionView
+import org.example.founder.BusinessPlanUploadView
+import org.example.model.StartupSubmissionData
+import java.io.File
 
 enum class ViewType {
     MAIN,
     BANK,
     FOUNDER,
+    BUSINESS_PLAN_UPLOAD,
     STARTUP_SUBMISSION,
     ANALYSIS,
     SUBMISSION_DETAIL,
     FOUNDER_ANALYSIS_LIST,
-    FOUNDER_ANALYSIS_DETAIL
+    FOUNDER_ANALYSIS_DETAIL,
+    INDUSTRY_FILE_MANAGEMENT,
+    CRITERIA_MANAGEMENT
 }
 
 @Composable
@@ -114,13 +128,16 @@ fun main() = application {
     var currentView by remember { mutableStateOf(ViewType.MAIN) }
     var submissionData by remember { mutableStateOf<StartupSubmissionData?>(null) }
     var selectedSubmissionReview by remember { mutableStateOf<org.example.model.SubmissionReview?>(null) }
+    var detectedIndustry by remember { mutableStateOf<String?>(null) }
+    var businessPlanFile by remember { mutableStateOf<File?>(null) }
+    var extractedStartupInfo by remember { mutableStateOf<org.example.model.ExtractedStartupInfo?>(null) }
     
     // Initialize services from configuration
     // Edit AIConfig.kt to configure AI provider and API key
     val aiService: AIService = remember { 
         AIServiceFactory.createFromConfig()
     }
-    val databaseService: DatabaseService = remember { DefaultDatabaseService() }
+    val databaseService: DatabaseService = remember { FileBasedDatabaseService() }
     
     Window(
         onCloseRequest = ::exitApplication,
@@ -139,7 +156,17 @@ fun main() = application {
                     onSelectSubmission = { submission ->
                         selectedSubmissionReview = submission
                         currentView = ViewType.SUBMISSION_DETAIL
-                    }
+                    },
+                    onManageIndustryFiles = { currentView = ViewType.INDUSTRY_FILE_MANAGEMENT },
+                    onManageCriteria = { currentView = ViewType.CRITERIA_MANAGEMENT }
+                )
+                ViewType.INDUSTRY_FILE_MANAGEMENT -> IndustryFileManagementView(
+                    databaseService = databaseService,
+                    onBack = { currentView = ViewType.BANK }
+                )
+                ViewType.CRITERIA_MANAGEMENT -> CriteriaManagementView(
+                    databaseService = databaseService,
+                    onBack = { currentView = ViewType.BANK }
                 )
                 ViewType.SUBMISSION_DETAIL -> {
                     selectedSubmissionReview?.let { submission ->
@@ -156,8 +183,18 @@ fun main() = application {
                 }
                 ViewType.FOUNDER -> FounderView(
                     onBack = { currentView = ViewType.MAIN },
-                    onEnterProcess = { currentView = ViewType.STARTUP_SUBMISSION },
+                    onEnterProcess = { currentView = ViewType.BUSINESS_PLAN_UPLOAD },
                     onViewAnalyses = { currentView = ViewType.FOUNDER_ANALYSIS_LIST }
+                )
+                ViewType.BUSINESS_PLAN_UPLOAD -> BusinessPlanUploadView(
+                    onBack = { currentView = ViewType.FOUNDER },
+                    aiService = aiService,
+                    onIndustryDetected = { industry, file, startupInfo ->
+                        detectedIndustry = industry
+                        businessPlanFile = file
+                        extractedStartupInfo = startupInfo
+                        currentView = ViewType.STARTUP_SUBMISSION
+                    }
                 )
                 ViewType.FOUNDER_ANALYSIS_LIST -> FounderAnalysisListView(
                     databaseService = databaseService,
@@ -180,9 +217,20 @@ fun main() = application {
                     }
                 }
                 ViewType.STARTUP_SUBMISSION -> StartupSubmissionView(
-                    onBack = { currentView = ViewType.FOUNDER },
+                    onBack = { 
+                        detectedIndustry = null
+                        businessPlanFile = null
+                        extractedStartupInfo = null
+                        currentView = ViewType.BUSINESS_PLAN_UPLOAD
+                    },
+                    preSelectedIndustry = detectedIndustry,
+                    businessPlanFile = businessPlanFile,
+                    extractedInfo = extractedStartupInfo,
                     onSubmit = { data ->
                         submissionData = data
+                        detectedIndustry = null
+                        businessPlanFile = null
+                        extractedStartupInfo = null
                         currentView = ViewType.ANALYSIS
                     }
                 )

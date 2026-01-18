@@ -1,0 +1,32 @@
+# Common Scoring Criteria Configuration
+# Shared rubrics and decision mapping used across all industry-specific criteria
+
+rubrics:
+  score_levels:
+    - level: 5
+      label: "Excellent"
+      description: "Exceeds expectations, strong competitive advantage"
+    - level: 4
+      label: "Good"
+      description: "Meets expectations, solid fundamentals"
+    - level: 3
+      label: "Average"
+      description: "Meets basic requirements, some concerns"
+    - level: 2
+      label: "Below Average"
+      description: "Does not fully meet requirements, significant concerns"
+    - level: 1
+      label: "Poor"
+      description: "Fails to meet requirements, major issues"
+
+decision_mapping:
+  fund:
+    min_score: 4.0
+    description: "Recommend funding - strong potential"
+  partial:
+    min_score: 3.0
+    max_score: 3.9
+    description: "Recommend partial funding - moderate potential with conditions"
+  decline:
+    max_score: 2.9
+    description: "Recommend decline - insufficient potential or high risk"

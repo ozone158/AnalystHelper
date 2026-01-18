@@ -13,6 +13,24 @@ data class CriteriaConfig(
     val decisionMapping: DecisionMapping
 )
 
+/**
+ * Common configuration containing shared rubrics and decision mapping
+ * Used in modular criteria structure
+ */
+data class CommonConfig(
+    val rubrics: Rubrics,
+    @JsonProperty("decision_mapping")
+    val decisionMapping: DecisionMapping
+)
+
+/**
+ * Industry-specific configuration containing only categories
+ * Used in modular criteria structure
+ */
+data class IndustryConfig(
+    val categories: List<Category>
+)
+
 data class Category(
     val name: String,
     val weight: Double,

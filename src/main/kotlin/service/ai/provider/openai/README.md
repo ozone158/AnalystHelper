@@ -8,7 +8,7 @@
 
 ## How to Use
 
-**Edit `src/main/kotlin/config/AIConfig.kt`:**
+**Edit `src/main/kotlin/service/ai/AIConfig.kt`:**
 
 ```kotlin
 object AIConfig {

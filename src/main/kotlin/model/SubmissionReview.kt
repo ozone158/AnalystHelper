@@ -1,6 +1,6 @@
 package org.example.model
 
-import org.example.StartupSubmissionData
+import org.example.model.StartupSubmissionData
 import java.util.Date
 
 /**
